@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "ticketdesk": {
+      "type": "http",
+      "url": "http://127.0.0.1:5077/mcp",
+      "headers": {
+        "Authorization": "Bearer ${TICKETDESK_MCP_TOKEN}"
+      }
+    }
+  }
+}
