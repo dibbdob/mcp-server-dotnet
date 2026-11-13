@@ -1,7 +1,9 @@
 namespace Ticketdesk.Mcp;
 
 using System.ComponentModel;
+using System.Text.RegularExpressions;
 using System.Text.Json.Serialization;
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 
 /// <summary>What a search returns for each match: enough to choose a ticket, not its full text.</summary>
@@ -24,7 +26,7 @@ public enum TicketStatus
 /// when to use another, and every parameter is described, because the description is all the model has.
 /// </summary>
 [McpServerToolType]
-public sealed class TicketTools(TicketStore store)
+public sealed partial class TicketTools(TicketStore store)
 {
     [McpServerTool(Name = "search_tickets", Title = "Search tickets")]
     [Description(
@@ -46,7 +48,7 @@ public sealed class TicketTools(TicketStore store)
         "Read one support ticket in full: the customer's subject and message, its status, plan, priority, when it " +
         "was opened, and the team's internal notes. Use this once you have an id; use search_tickets to find one.")]
     public Ticket GetTicket(
-        [Description("The ticket's id, such as T-1001.")] string ticketId) => store.Get(ticketId);
+        [Description("The ticket's id, such as T-1001.")] string ticketId) => this.Require(ticketId);
 
     [McpServerTool(Name = "add_internal_note", Title = "Add an internal note")]
     [Description(
@@ -55,8 +57,21 @@ public sealed class TicketTools(TicketStore store)
         "the customer.")]
     public Ticket AddInternalNote(
         [Description("The ticket's id, such as T-1001.")] string ticketId,
-        [Description("The note, in plain text. Say what you found and how you know it.")] string note) =>
-        store.AddNote(ticketId, note);
+        [Description("The note, in plain text, at most 2000 characters. Say what you found and how you know it.")] string note)
+    {
+        var ticket = this.Require(ticketId);
+        if (string.IsNullOrWhiteSpace(note))
+        {
+            throw new McpException("The note is empty. Write what you found, then call add_internal_note again.");
+        }
+
+        if (note.Length > MaxNoteLength)
+        {
+            throw new McpException($"The note is {note.Length} characters; the limit is {MaxNoteLength}. Shorten it and try again.");
+        }
+
+        return store.AddNote(ticket.Id, note.Trim());
+    }
 
     [McpServerTool(Name = "get_response_deadline", Title = "When a reply is due")]
     [Description(
@@ -66,10 +81,31 @@ public sealed class TicketTools(TicketStore store)
     public object GetResponseDeadline(
         [Description("The ticket's id, such as T-1001.")] string ticketId)
     {
-        var ticket = store.Get(ticketId);
+        var ticket = this.Require(ticketId);
         var due = ResponseDeadline.DueAt(ticket.OpenedAt, ticket.Priority);
         return new { ticket_id = ticket.Id, priority = ticket.Priority, opened_at = ticket.OpenedAt, due_at = due };
     }
 
+    public const int MaxNoteLength = 2000;
+
+    /// <summary>
+    /// The ticket, or an error the model can act on. A thrown McpException becomes a tool result with
+    /// isError set and this message, so the model can correct itself. Any other exception becomes a
+    /// generic message with no detail, which is right for the unexpected and useless for the expected.
+    /// </summary>
+    private Ticket Require(string ticketId)
+    {
+        if (!TicketId().IsMatch(ticketId))
+        {
+            throw new McpException($"'{ticketId}' is not a ticket id. Ids look like T-1001; use search_tickets to find one.");
+        }
+
+        return store.Find(ticketId)
+            ?? throw new McpException($"There is no ticket {ticketId}. Use search_tickets to find the right id.");
+    }
+
     private static string Name(TicketStatus status) => status.ToString().ToLowerInvariant();
+
+    [GeneratedRegex("^T-[0-9]{4}$", RegexOptions.IgnoreCase)]
+    private static partial Regex TicketId();
 }
