@@ -67,6 +67,7 @@ approve it the first time. For other hosts, user scope and a shared HTTP server,
   failed a test.
 - **Verified with Claude Code:** `claude mcp list` finds the project server and lists it as pending
   approval.
+- **Run on GitHub:** `./build.sh`, by the `build` workflow on every push to `main` and every pull request.
 - **Not yet verified:** a model actually using the tools in a session, which needs the server approved;
   and any host other than Claude Code.
 
