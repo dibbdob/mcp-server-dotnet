@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "ticketdesk": {
+      "type": "stdio",
+      "command": "dotnet",
+      "args": ["src/Ticketdesk.Mcp/bin/Debug/net10.0/Ticketdesk.Mcp.dll"]
+    }
+  }
+}
