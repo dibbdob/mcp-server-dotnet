@@ -43,7 +43,7 @@ public sealed class ErrorTests
 
         await Assert.That(result.IsError).IsTrue();
         await Assert.That(ToolDesignTests.Text(result)).Contains("The note is empty");
-        await Assert.That(ToolDesignTests.Text(ticket)).Contains("\"notes\":[]");
+        await Assert.That(ToolDesignTests.Text(ticket)).Contains("\"internal_notes\":[]");
     }
 
     [Test]
