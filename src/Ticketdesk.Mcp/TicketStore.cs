@@ -31,11 +31,11 @@ public sealed class TicketStore
         return new TicketStore(JsonSerializer.Deserialize<List<Ticket>>(File.ReadAllText(path))!);
     }
 
-    public Ticket Get(string id)
+    public Ticket? Find(string id)
     {
         lock (this.gate)
         {
-            return this.tickets[id];
+            return this.tickets.GetValueOrDefault(id);
         }
     }
 
