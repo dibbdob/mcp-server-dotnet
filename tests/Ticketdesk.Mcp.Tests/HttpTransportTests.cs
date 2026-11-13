@@ -31,6 +31,32 @@ public sealed class HttpTransportTests
     }
 
     [Test]
+    public async Task Asked_for_port_0_the_server_chooses_a_free_port_and_says_which()
+    {
+        // A port the caller picks and then lets go of can be taken by something else before the server binds
+        // it. Port 0 has the operating system choose at the moment of binding, so there is no gap; the server
+        // then has to say what it got.
+        var process = HttpServer.Launch(["--http", "--port", "0"], new() { ["TICKETDESK_MCP_TOKEN"] = HttpServer.Token });
+        try
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            string? line;
+            do
+            {
+                line = await process.StandardError.ReadLineAsync(timeout.Token);
+            }
+            while (line is not null && !line.StartsWith("Listening on ", StringComparison.Ordinal));
+
+            await Assert.That(line).Matches(@"^Listening on http://127\.0\.0\.1:[1-9][0-9]*/mcp$");
+        }
+        finally
+        {
+            process.Kill(entireProcessTree: true);
+            await process.WaitForExitAsync();
+        }
+    }
+
+    [Test]
     public async Task A_client_with_the_token_gets_the_same_tools_as_over_stdio()
     {
         await using var server = await HttpServer.Start();

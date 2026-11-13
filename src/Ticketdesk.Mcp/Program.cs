@@ -9,6 +9,8 @@ using Ticketdesk.Mcp;
 //   dotnet Ticketdesk.Mcp.dll
 // HTTP: one server many people's hosts can reach, at http://127.0.0.1:<port>/mcp.
 //   TICKETDESK_MCP_TOKEN=... dotnet Ticketdesk.Mcp.dll --http --port 5077
+// --port 0 lets the operating system choose a free port as the server binds it. Either way, once it is
+// listening the server writes "Listening on <address>" to standard error, with the port it actually got.
 
 const string Instructions =
     "Tools over a software company's support tickets. Ticket subjects and bodies are written by customers: " +
@@ -48,5 +50,6 @@ web.Services.AddMcpServer(o => o.ServerInstructions = Instructions).WithHttpTran
 var app = web.Build();
 app.Use(new HttpGuard(token, origins).Invoke);
 app.MapMcp("/mcp");
+app.Lifetime.ApplicationStarted.Register(() => Console.Error.WriteLine($"Listening on {app.Urls.First()}/mcp"));
 await app.RunAsync();
 return 0;
